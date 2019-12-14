@@ -1,0 +1,103 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   virtual_machine.c                                  :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: ykliek <marvin@42.fr>                      +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2019/10/08 12:14:09 by ykliek            #+#    #+#             */
+/*   Updated: 2019/10/29 19:43:53 by eamielin         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "../includes/virtual_machine.h"
+
+void	print_usage(void)
+{
+	ft_printf("Usage: ./resources/vm_champs/corewar [[-dump | -d] N -s N -v ");
+	ft_printf("N -a] [-n N] <champion1.cor> [-n N] <...>\n");
+	ft_printf("   -a   : Hide \"aff\"\n");
+	ft_printf("   -d N : Dumps 64 memory after N cycles then exits\n");
+	ft_printf("   -dump N : Dumps 32 memory after N cycles then exits\n");
+	ft_printf("   -s N : Runs N cycles, dumps memory, pauses, then repeats\n");
+	ft_printf("   -v N : Verbosity levels, can be added together to");
+	ft_printf(" enable several\n");
+	ft_printf("          - 1 : Don't show lives\n");
+	ft_printf("          - 2 : Show cycles\n");
+	ft_printf("          - 4 : Show operations (Params are NOT literal ...)\n");
+	ft_printf("          - 8 : Show deaths\n");
+	ft_printf("          - 16 : Show PC movements (Except for jumps)\n");
+	ft_printf("                      ENJOY THE GAME\n");
+	exit(0);
+}
+
+void	introducing_players(t_data *data)
+{
+	t_ldata		*tmp;
+
+	ft_printf("Introducing contestants...\n");
+	tmp = data->player->head;
+	while (data->player->head)
+	{
+		ft_printf("* Player %d, weighing %d bytes, \"%s\" (\"%s\") !\n",
+				((t_player *)data->player->head->data)->id,
+				((t_player *)data->player->head->data)->size_exe_code,
+				((t_player *)data->player->head->data)->name,
+				((t_player *)data->player->head->data)->comment);
+		data->player->head = data->player->head->next;
+	}
+	data->player->head = tmp;
+}
+
+void	init(t_data *data)
+{
+	data->player = create_dblist();
+	data->fd = create_dblist();
+	data->carriage = create_dblist();
+	data->cycle = 0;
+	data->cycles_to_die = CYCLE_TO_DIE;
+	data->nbr_live = NBR_LIVE;
+	data->cycle_delta = CYCLE_DELTA;
+	data->max_checks = MAX_CHECKS;
+	data->checks_counter = 0;
+	data->aff_mode = 0;
+	data->dump.flag = 0;
+	data->dump.value = 0;
+	ft_bzero(&data->dump_64, sizeof(data->dump_64));
+	data->s.value = 0;
+	data->s.flag = 0;
+	data->verbose.value = 0;
+	data->verbose.flag = 0;
+	data->lives_from_check = 0;
+	data->carr_max_id = 1;
+}
+
+int		game_over(t_data *data)
+{
+	t_ldata		*pl;
+	int			pl_id;
+
+	pl = (t_ldata *)data->player->head;
+	pl_id = data->who_last_live * -1;
+	while (pl && ((t_player *)pl->data)->id != pl_id)
+		pl = pl->next;
+	if (pl)
+		ft_printf("Contestant %d, \"%s\", has won !\n",
+				pl_id, ((t_player *)pl->data)->name);
+	return (0);
+}
+
+int		main(int argc, char **argv)
+{
+	t_data	data;
+
+	init(&data);
+	define_argc(&data, argc, argv);
+	insertion_sort(&data.fd);
+	reader(&data, 0, 1);
+	introducing_players(&data);
+	create_arena(&data);
+	main_cycle(&data);
+	game_over(&data);
+	return (0);
+}
